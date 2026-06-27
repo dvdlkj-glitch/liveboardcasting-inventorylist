@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ulive Smart Fulfillment — AI Order Matching Demo</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#283042;
+    --ink:#e6edf3; --muted:#8b97a8; --muted2:#5d6b7e;
+    --brand:#3b82f6; --brand2:#6366f1;
+    --green:#22c55e; --green-bg:rgba(34,197,94,.12);
+    --amber:#f59e0b; --amber-bg:rgba(245,158,11,.12);
+    --slate:#64748b; --slate-bg:rgba(100,116,139,.14);
+    --red:#ef4444;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+    --radius:16px;
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:var(--brand)}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:linear-gradient(120deg,#11203b 0%,#161b22 60%);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 24px;box-shadow:var(--shadow);margin-bottom:22px;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;
+    background:radial-gradient(circle,rgba(99,102,241,.35),transparent 70%);filter:blur(10px)}
+  .logo{width:52px;height:52px;border-radius:14px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));
+    display:grid;place-items:center;font-size:26px;box-shadow:0 6px 18px rgba(59,130,246,.45)}
+  .htext h1{font-size:21px;letter-spacing:.2px}
+  .htext p{color:var(--muted);font-size:13px;margin-top:2px}
+  .tag{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;z-index:1}
+  .pill{font-size:11.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:rgba(255,255,255,.03);color:var(--muted)}
+  .pill b{color:var(--ink)}
+
+  /* ---------- Stepper ---------- */
+  .stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px;position:relative;
+    transition:.4s;opacity:.55}
+  .step .num{width:28px;height:28px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+    display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--muted);transition:.4s}
+  .step h4{font-size:13.5px;margin:10px 0 3px}
+  .step p{font-size:11.5px;color:var(--muted)}
+  .step.active{opacity:1;border-color:var(--brand);box-shadow:0 0 0 1px var(--brand),0 8px 22px rgba(59,130,246,.18)}
+  .step.active .num{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-color:transparent}
+  .step.done{opacity:1;border-color:rgba(34,197,94,.5)}
+  .step.done .num{background:var(--green);color:#04210f;border-color:transparent}
+  .step.done .num::after{content:"✓"}
+  .step.done .num span{display:none}
+
+  /* ---------- Layout ---------- */
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}.stepper{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card .hd{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .card .hd .ic{font-size:18px}
+  .card .hd h3{font-size:15px}
+  .card .hd small{color:var(--muted);font-weight:400;font-size:12px;display:block}
+  .card .bd{padding:18px}
+
+  /* ---------- Order intake / source ---------- */
+  .cust{font-size:13px}
+  .cust .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .cust .row:last-child{border:0}
+  .cust .row span:first-child{color:var(--muted)}
+  .cust .row b{font-weight:600}
+  .src-note{margin-top:14px;font-size:11.5px;color:var(--muted);background:var(--panel2);
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;line-height:1.6}
+
+  .btn{appearance:none;border:0;cursor:pointer;font-weight:700;font-size:14px;color:#fff;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));padding:13px 16px;border-radius:12px;width:100%;
+    box-shadow:0 8px 20px rgba(59,130,246,.35);transition:.18s;display:flex;align-items:center;justify-content:center;gap:9px}
+  .btn:hover{transform:translateY(-1px);filter:brightness(1.07)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);box-shadow:none}
+  .btn.sm{width:auto;padding:9px 14px;font-size:13px}
+  .btnrow{display:flex;gap:10px;margin-top:16px}
+
+  /* ---------- Empty state ---------- */
+  .empty{padding:60px 24px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:46px;margin-bottom:10px;opacity:.8}
+  .empty h3{color:var(--ink);font-size:17px;margin-bottom:6px}
+  .empty p{font-size:13px;max-width:440px;margin:0 auto}
+
+  /* ---------- Console / live log ---------- */
+  .console{font-family:'Consolas','SF Mono',ui-monospace,monospace;font-size:12px;background:#0a0e14;
+    border:1px solid var(--line);border-radius:12px;padding:14px;height:0;overflow:hidden;transition:height .35s ease;color:#9fb3c8}
+  .console.show{height:150px;overflow:auto;margin-bottom:18px}
+  .console .ln{padding:2px 0;opacity:0;animation:fade .3s forwards}
+  .console .ln .t{color:var(--muted2)}
+  .console .ln.ok{color:#7ee2a8}
+  .console .ln.warn{color:#f3c267}
+  .console .ln.info{color:#7fb4ff}
+  @keyframes fade{to{opacity:1}}
+
+  /* ---------- KPI dashboard ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  @media(max-width:680px){.kpis{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;position:relative;overflow:hidden}
+  .kpi .lab{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .kpi .val{font-size:30px;font-weight:800;margin-top:6px;line-height:1}
+  .kpi .sub{font-size:11px;color:var(--muted);margin-top:4px}
+  .kpi .bar{position:absolute;left:0;bottom:0;height:4px;width:100%}
+  .kpi.green .val{color:var(--green)} .kpi.green .bar{background:var(--green)}
+  .kpi.amber .val{color:var(--amber)} .kpi.amber .bar{background:var(--amber)}
+  .kpi.slate .val{color:#93a3b8} .kpi.slate .bar{background:var(--slate)}
+  .kpi.brand .val{color:#7fb4ff} .kpi.brand .bar{background:var(--brand)}
+
+  .ring{--p:0;width:62px;height:62px;border-radius:50%;flex:0 0 auto;
+    background:conic-gradient(var(--green) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center}
+  .ring::before{content:"";position:absolute;width:46px;height:46px;border-radius:50%;background:var(--panel)}
+  .ring b{position:relative;font-size:14px}
+
+  /* ---------- Recommendation banner ---------- */
+  .reco{display:flex;gap:14px;align-items:center;border-radius:14px;padding:16px 18px;margin-bottom:18px;
+    border:1px solid var(--line)}
+  .reco .em{font-size:30px}
+  .reco h3{font-size:16px;margin-bottom:3px}
+  .reco p{font-size:12.5px;color:var(--muted)}
+  .reco.hold{background:linear-gradient(120deg,rgba(245,158,11,.14),transparent);border-color:rgba(245,158,11,.45)}
+  .reco.go{background:linear-gradient(120deg,rgba(34,197,94,.14),transparent);border-color:rgba(34,197,94,.45)}
+  .reco .act{margin-left:auto;display:flex;gap:8px}
+
+  /* ---------- Table ---------- */
+  .tablewrap{overflow:auto;border-radius:12px;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+  thead th{position:sticky;top:0;background:var(--panel2);color:var(--muted);text-align:left;
+    padding:11px 12px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  tbody tr:last-child td{border-bottom:0}
+  .code{font-family:'Consolas',monospace;font-size:11.5px;color:#9fb4cf;background:var(--panel2);
+    padding:2px 7px;border-radius:6px;white-space:nowrap}
+  .desc b{font-weight:600;display:block;font-size:12.5px}
+  .desc small{color:var(--muted);font-size:11px}
+  .sup{font-size:11px;color:var(--muted);white-space:nowrap}
+  .hub{font-size:10.5px;padding:2px 7px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+  .qty{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .qty small{color:var(--muted);font-weight:400}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+    padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .b-green{color:#86efac;background:var(--green-bg);border:1px solid rgba(34,197,94,.4)}
+  .b-amber{color:#fcd34d;background:var(--amber-bg);border:1px solid rgba(245,158,11,.4)}
+  .b-slate{color:#cbd5e1;background:var(--slate-bg);border:1px solid rgba(100,116,139,.4)}
+  .dot{width:7px;height:7px;border-radius:50%}
+  .b-green .dot{background:var(--green)} .b-amber .dot{background:var(--amber)} .b-slate .dot{background:var(--slate)}
+
+  .act-btn{font-size:11px;font-weight:700;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+    cursor:pointer;background:var(--panel2);color:var(--ink);transition:.15s;white-space:nowrap}
+  .act-btn.go{background:var(--green);color:#04210f;border-color:transparent}
+  .act-btn.go:hover{filter:brightness(1.1)}
+  .act-btn.wait{color:var(--muted)}
+  .act-btn:disabled{opacity:.5;cursor:default}
+
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+  .chip{font-size:12px;padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:7px}
+  .chip.active{color:var(--ink);border-color:var(--brand);background:rgba(59,130,246,.12)}
+  .chip .c{width:8px;height:8px;border-radius:50%}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+
+  footer{margin-top:30px;color:var(--muted2);font-size:11.5px;text-align:center;line-height:1.8}
+  .hide{display:none!important}
+  .fadein{animation:rise .5s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* receiving scanner viz */
+  .scan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
+  @media(max-width:680px){.scan-grid{grid-template-columns:1fr}}
+  .sup-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .sup-card .nm{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .sup-card .meta{font-size:11px;color:var(--muted);margin-top:3px}
+  .sup-card .prog{height:6px;border-radius:6px;background:var(--line);margin-top:10px;overflow:hidden}
+  .sup-card .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brand),var(--green));transition:width .8s ease}
+  .sup-card .st{font-size:10.5px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="logo">🛒</div>
+    <div class="htext">
+      <h1>Ulive Smart Fulfillment</h1>
+      <p>AI Order-to-Receiving Matching Engine · Live Demo</p>
+    </div>
+    <div class="tag">
+      <span class="pill">Hubs: <b>K.K.</b> · <b>K.L.</b></span>
+      <span class="pill">Suppliers: <b>A · B · C</b></span>
+      <span class="pill">Mode: <b>AI Automated</b></span>
+    </div>
+  </header>
+
+  <!-- Stepper -->
+  <div class="stepper" id="stepper">
+    <div class="step" data-step="1">
+      <div class="num"><span>1</span></div>
+      <h4>Order Intake & Extraction</h4>
+      <p>Customer order from Messenger → structured line items</p>
+    </div>
+    <div class="step" data-step="2">
+      <div class="num"><span>2</span></div>
+      <h4>Inbound Receiving & Scan</h4>
+      <p>Suppliers ship to hubs · barcode scan vs digital records</p>
+    </div>
+    <div class="step" data-step="3">
+      <div class="num"><span>3</span></div>
+      <h4>Smart Inventory Matching</h4>
+      <p>Match received goods to each ordered line</p>
+    </div>
+    <div class="step" data-step="4">
+      <div class="num"><span>4</span></div>
+      <h4>Optimized Output</h4>
+      <p>Fulfillment status + Fulfill / Hold recommendation</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: source / control -->
+    <div>
+      <div class="card">
+        <div class="hd"><span class="ic">📄</span>
+          <div><h3>Customer Order Source</h3><small>Uploaded Excel — Amy Yee</small></div>
+        </div>
+        <div class="bd">
+          <div class="cust">
+            <div class="row"><span>Customer</span><b>AMY YEE</b></div>
+            <div class="row"><span>FB / Channel</span><b>Messenger</b></div>
+            <div class="row"><span>Phone</span><b>+60 98808133</b></div>
+            <div class="row"><span>Country</span><b>🇲🇾 Malaysia</b></div>
+            <div class="row"><span>Invoices</span><b>2 (19023 · 19697)</b></div>
+            <div class="row"><span>Order lines</span><b id="lineCount">—</b></div>
+            <div class="row"><span>Order value</span><b id="orderValue">—</b></div>
+          </div>
+          <div class="src-note">
+            📌 <b>How the demo maps to the real flow:</b> Amy's two invoice screenshots are
+            OCR-extracted into structured lines. Each line is auto-assigned to its supplier &amp;
+            receiving hub, then matched against what has physically arrived &amp; been scanned.
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="uploadBtn">📥 Simulate Excel Upload</button>
+          </div>
+          <div class="btnrow">
+            <button class="btn ghost sm" id="runBtn" disabled style="flex:1">▶ Run AI Matching</button>
+            <button class="btn ghost sm" id="resetBtn" style="width:auto">↺ Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="hd"><span class="ic">🏭</span>
+          <div><h3>Inbound Receiving</h3><small>Live scan progress by supplier</small></div>
+        </div>
+        <div class="bd">
+          <div class="scan-grid" id="scanGrid">
+            <div class="empty" style="padding:24px;grid-column:1/-1">
+              <div class="big">📦</div>
+              <p style="font-size:12px">Run matching to see supplier receiving progress.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <div class="console" id="console"></div>
+
+      <div id="resultArea">
+        <div class="card">
+          <div class="empty">
+            <div class="big">🤖</div>
+            <h3>Awaiting order &amp; matching run</h3>
+            <p>Click <b>Simulate Excel Upload</b> to load Amy Yee's order, then
+               <b>Run AI Matching</b> to watch the engine reconcile every line against
+               received supplier stock and decide what can ship.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>Ulive Purchase-Order → Automation · Demo build · single-file HTML (no server, no dependencies — upload anywhere)</div>
+    <div>Replaces the manual bottleneck: 50+ printed lists &amp; hand-checking at K.K./K.L. → real-time AI matching.</div>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   DEMO DATA — Amy Yee's order (from Ulive_Invoices.xlsx)
+   ordered = qty ordered ; received = qty physically scanned in
+   ============================================================ */
+const SUPPLIERS = {
+  A: {name:"Supplier A · Electronics", hub:"K.K.", emoji:"🔌"},
+  B: {name:"Supplier B · 虾哥 Herbal & Soup", hub:"K.L.", emoji:"🍲"},
+  C: {name:"Supplier C · SukGarden Care", hub:"K.K.", emoji:"🧴"}
+};
+
+const ORDER = [
+  // invoice 19023 — electronics + herbal
+  {inv:"19023", code:"E10C", en:"10W Spray Handheld Fan (White)", cn:"喷雾制冷手持电风扇", sup:"A", price:69.90, ordered:1, received:1},
+  {inv:"19023", code:"E41",  en:"Fast Charger YSY-6099 65W",     cn:"快充插头",           sup:"A", price:39.90, ordered:1, received:1},
+  {inv:"19023", code:"E45",  en:"Multi-function Electric Cooker 110V", cn:"多功能电煮锅", sup:"A", price:118.00, ordered:1, received:0},
+  {inv:"19023", code:"H16",  en:"Lingzhi Chicken-Bone-Grass Soup Pack", cn:"灵芝鸡骨草汤包", sup:"B", price:9.90, ordered:1, received:1},
+  {inv:"19023", code:"H20",  en:"Five-Finger Peach Soup Pack",   cn:"老火靓汤五指毛桃汤包", sup:"B", price:9.90, ordered:2, received:1},
+  {inv:"19023", code:"H21",  en:"Agaricus Blazei 250g",          cn:"姬松茸",             sup:"B", price:39.90, ordered:1, received:1},
+  {inv:"19023", code:"H26",  en:"Five-Finger Peach Root 200g",   cn:"五指毛桃",           sup:"B", price:18.90, ordered:1, received:1},
+  {inv:"19023", code:"H27",  en:"Dried Lily 300g",               cn:"百合",               sup:"B", price:33.90, ordered:1, received:0},
+  {inv:"19023", code:"H30",  en:"Lotus Seeds 450g",              cn:"莲子",               sup:"B", price:29.90, ordered:1, received:1},
+  {inv:"19023", code:"H36",  en:"Gui Fei Fungus 250g",           cn:"贵妃耳",             sup:"B", price:33.90, ordered:1, received:1},
+  {inv:"19023", code:"H37",  en:"White Jade Fungus 250g",        cn:"白玉耳",             sup:"B", price:32.90, ordered:1, received:1},
+  // invoice 19697 — SukGarden personal care
+  {inv:"19697", code:"?",    en:"Unreadable item (OCR low-confidence)", cn:"票面截断 — 需人工核对", sup:"C", price:9.90, ordered:2, received:0, verify:true},
+  {inv:"19697", code:"R35",  en:"SukGarden Fabric Softener Sachet 36g (+5 free)", cn:"蔬果园香氛柔顺剂", sup:"C", price:1.50, ordered:5, received:5},
+  {inv:"19697", code:"R40",  en:"SukGarden Bluebell Shower Gel 800g", cn:"蓝风铃精油沐浴乳", sup:"C", price:65.80, ordered:1, received:1, note:'flagged "Owe"'},
+  {inv:"19697", code:"R42",  en:"SukGarden Sandalwood-Camellia Shower Gel 800g", cn:"白檀山茶精油沐浴乳", sup:"C", price:65.80, ordered:1, received:0}
+];
+
+/* ---- status helpers ---- */
+function statusOf(it){
+  if(it.received >= it.ordered && it.received>0) return "full";
+  if(it.received > 0 && it.received < it.ordered) return "partial";
+  return "pending";
+}
+const STATUS = {
+  full:   {label:"Confirmed",      badge:"b-green", chip:"#22c55e", verb:"Received in full"},
+  partial:{label:"Partial",        badge:"b-amber", chip:"#f59e0b", verb:"Missing quantity"},
+  pending:{label:"To Be Confirmed",badge:"b-slate", chip:"#64748b", verb:"Not yet received"}
+};
+const RM = n => "RM "+n.toFixed(2);
+
+/* ============================================================
+   DOM refs + state
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const steps = [...document.querySelectorAll('.step')];
+const consoleEl = $('#console');
+let loaded=false, activeFilter="all";
+
+/* ---------- step control ---------- */
+function setStep(n, mode){ // mode: 'active' | 'done'
+  steps.forEach(s=>{
+    const k = +s.dataset.step;
+    s.classList.remove('active','done');
+    if(k<n) s.classList.add('done');
+    else if(k===n) s.classList.add(mode==='done'?'done':'active');
+  });
+}
+function allDone(){ steps.forEach(s=>{s.classList.remove('active');s.classList.add('done')}); }
+
+/* ---------- console ---------- */
+function log(msg, cls=""){
+  consoleEl.classList.add('show');
+  const d=document.createElement('div');
+  d.className='ln '+cls;
+  const t=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date());
+  d.innerHTML=`<span class="t">[${t}]</span> ${msg}`;
+  consoleEl.appendChild(d);
+  consoleEl.scrollTop=consoleEl.scrollHeight;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ============================================================
+   UPLOAD
+   ============================================================ */
+$('#uploadBtn').addEventListener('click', ()=>{
+  loaded=true;
+  const lines=ORDER.length;
+  const val=ORDER.reduce((s,i)=>s+i.price*i.ordered,0);
+  $('#lineCount').textContent=lines+" lines";
+  $('#orderValue').textContent=RM(val);
+  setStep(1,'done');
+  log('📄 Excel parsed — <b>Ulive_Invoices.xlsx</b>','info');
+  log(`✓ Extracted <b>${lines}</b> order lines across 2 invoices for AMY YEE`,'ok');
+  $('#runBtn').disabled=false;
+  $('#uploadBtn').disabled=true;
+  $('#uploadBtn').textContent="✓ Order Loaded";
+  renderResults(false); // show order, no match yet
+});
+
+$('#resetBtn').addEventListener('click', ()=> location.reload());
+
+/* ============================================================
+   RUN MATCHING (animated)
+   ============================================================ */
+$('#runBtn').addEventListener('click', run);
+async function run(){
+  $('#runBtn').disabled=true; $('#runBtn').textContent="⏳ Matching…";
+
+  /* Step 2 — receiving scan */
+  setStep(2,'active');
+  log('🏭 Connecting to receiving hubs K.K. &amp; K.L. …','info');
+  buildScanCards();
+  await sleep(500);
+  for(const key of Object.keys(SUPPLIERS)){
+    await scanSupplier(key);
+  }
+  setStep(2,'done');
+
+  /* Step 3 — matching */
+  setStep(3,'active');
+  log('🤖 Smart Inventory Matching — reconciling received stock to ordered lines…','info');
+  await sleep(700);
+  const f=ORDER.filter(i=>statusOf(i)==='full').length;
+  const p=ORDER.filter(i=>statusOf(i)==='partial').length;
+  const g=ORDER.filter(i=>statusOf(i)==='pending').length;
+  log(`✓ ${f} confirmed · ⚠ ${p} partial · ⏳ ${g} pending`, 'ok');
+  await sleep(500);
+  setStep(3,'done');
+
+  /* Step 4 — output */
+  setStep(4,'active');
+  log('📦 Calculating order-level fulfillment recommendation…','info');
+  await sleep(600);
+  renderResults(true);
+  allDone();
+  log('✅ Done. See dashboard for fulfill / hold decision.','ok');
+  $('#runBtn').textContent="✓ Matching Complete";
+}
+
+/* ---------- receiving scan cards ---------- */
+function buildScanCards(){
+  const grid=$('#scanGrid'); grid.innerHTML="";
+  for(const [key,s] of Object.entries(SUPPLIERS)){
+    const items=ORDER.filter(i=>i.sup===key);
+    const ord=items.reduce((a,i)=>a+i.ordered,0);
+    const el=document.createElement('div');
+    el.className='sup-card'; el.id='sup-'+key;
+    el.innerHTML=`
+      <div class="nm">${s.emoji} ${s.name.split('·')[0].trim()} <span class="hub" style="margin-left:auto">${s.hub}</span></div>
+      <div class="meta">${s.name.split('·')[1].trim()} — ${items.length} SKUs / ${ord} units</div>
+      <div class="prog"><i></i></div>
+      <div class="st">scanning… 0 / ${ord} units</div>`;
+    grid.appendChild(el);
+  }
+}
+async function scanSupplier(key){
+  const s=SUPPLIERS[key];
+  const items=ORDER.filter(i=>i.sup===key);
+  const ord=items.reduce((a,i)=>a+i.ordered,0);
+  const rec=items.reduce((a,i)=>a+i.received,0);
+  const card=$('#sup-'+key);
+  const bar=card.querySelector('.prog i');
+  const st=card.querySelector('.st');
+  log(`📡 ${s.hub} — scanning inbound from ${s.name.split('·')[0].trim()}…`);
+  await sleep(450);
+  bar.style.width=(rec/ord*100)+"%";
+  st.textContent=`scanned ${rec} / ${ord} units`;
+  if(rec===ord){ st.innerHTML=`✅ <span style="color:#86efac">all ${ord} units received</span>`; bar.style.background="var(--green)"; log(`✓ ${s.name.split('·')[0].trim()} complete (${rec}/${ord})`,'ok'); }
+  else { st.innerHTML=`⚠ <span style="color:#fcd34d">${rec} / ${ord} units — ${ord-rec} short / pending</span>`; bar.style.background="var(--amber)"; log(`⚠ ${s.name.split('·')[0].trim()} short: ${rec}/${ord} received`,'warn'); }
+  await sleep(400);
+}
+
+/* ============================================================
+   RENDER RESULTS
+   ============================================================ */
+function renderResults(matched){
+  const area=$('#resultArea');
+  const f=ORDER.filter(i=>statusOf(i)==='full');
+  const p=ORDER.filter(i=>statusOf(i)==='partial');
+  const g=ORDER.filter(i=>statusOf(i)==='pending');
+  const totalUnits=ORDER.reduce((a,i)=>a+i.ordered,0);
+  const recvUnits =ORDER.reduce((a,i)=>a+Math.min(i.received,i.ordered),0);
+  const pct=Math.round(recvUnits/totalUnits*100);
+
+  // order-level reco (Scenario A vs B from the diagram)
+  const fullyReady = (p.length===0 && g.length===0);
+
+  let dash="";
+  if(matched){
+    dash=`
+    <div class="kpis fadein">
+      <div class="kpi green"><div class="lab">✅ Fulfillable now</div><div class="val">${f.length}</div><div class="sub">lines received in full</div><div class="bar"></div></div>
+      <div class="kpi amber"><div class="lab">⚠ Partial</div><div class="val">${p.length}</div><div class="sub">missing quantity</div><div class="bar"></div></div>
+      <div class="kpi slate"><div class="lab">⏳ Not received</div><div class="val">${g.length}</div><div class="sub">pending arrival / verify</div><div class="bar"></div></div>
+      <div class="kpi brand"><div class="lab">📊 Order fill rate</div><div class="val">${pct}%</div><div class="sub">${recvUnits} / ${totalUnits} units in</div><div class="bar"></div></div>
+    </div>
+
+    <div class="reco ${fullyReady?'go':'hold'} fadein">
+      <div class="em">${fullyReady?'🚀':'⏸️'}</div>
+      <div>
+        <h3>System Recommendation: ${fullyReady?'FULFILL — ship now':'HOLD / QUEUE order'}</h3>
+        <p>${fullyReady
+            ? 'All items for this order have been received. Dispatch immediately.'
+            : `${p.length+g.length} of ${ORDER.length} lines are not yet complete. Ship-complete policy → hold the order, notify Amy, and auto-release when the remaining items arrive.`}</p>
+      </div>
+      <div class="act">
+        <button class="act-btn ${fullyReady?'go':''}" ${fullyReady?'':'disabled'}>${fullyReady?'Dispatch':'Awaiting stock'}</button>
+        ${fullyReady?'':'<button class="act-btn">Notify customer</button>'}
+      </div>
+    </div>
+
+    <div class="filters fadein" id="filters">
+      <div class="chip active" data-f="all">All <b style="margin-left:4px">${ORDER.length}</b></div>
+      <div class="chip" data-f="full"><span class="c" style="background:#22c55e"></span>Confirmed ${f.length}</div>
+      <div class="chip" data-f="partial"><span class="c" style="background:#f59e0b"></span>Partial ${p.length}</div>
+      <div class="chip" data-f="pending"><span class="c" style="background:#64748b"></span>Not received ${g.length}</div>
+    </div>`;
+  }
+
+  const head = matched ? 'Matching Result — line by line' : 'Order Lines (loaded — not yet matched)';
+  const sub  = matched ? 'Received stock reconciled against each ordered item' : 'Click “Run AI Matching” to reconcile against received stock';
+
+  let rows = ORDER.map((it,idx)=>{
+    const stt = statusOf(it);
+    const meta = STATUS[stt];
+    const sup = SUPPLIERS[it.sup];
+    const badge = matched
+      ? `<span class="badge ${meta.badge}"><span class="dot"></span>${meta.label}</span>`
+      : `<span class="badge b-slate"><span class="dot"></span>Queued</span>`;
+    const qty = matched
+      ? `<span class="qty">${Math.min(it.received,it.ordered)}<small> / ${it.ordered}</small></span>${it.received>it.ordered?' <small style="color:#86efac">(+'+(it.received-it.ordered)+')</small>':''}`
+      : `<span class="qty">${it.ordered}</span>`;
+    let action='';
+    if(matched){
+      if(stt==='full') action=`<button class="act-btn go">Fulfill</button>`;
+      else if(stt==='partial') action=`<button class="act-btn wait">Ship partial?</button>`;
+      else action=`<button class="act-btn wait" disabled>Hold</button>`;
+    } else action='—';
+    const flags=[];
+    if(it.verify) flags.push('🔎 verify');
+    if(it.note) flags.push('📝 '+it.note);
+    const flagHtml = flags.length?`<small style="color:#f3c267"> · ${flags.join(' · ')}</small>`:'';
+    return `<tr data-status="${stt}">
+      <td><span class="code">${it.code}</span><div class="sup" style="margin-top:4px">Inv ${it.inv}</div></td>
+      <td class="desc"><b>${it.en}</b><small>${it.cn}${flagHtml}</small></td>
+      <td><div class="sup">${sup.emoji} ${sup.name.split('·')[0].trim()}</div><span class="hub">${sup.hub}</span></td>
+      <td>${qty}</td>
+      <td>${RM(it.price*it.ordered)}</td>
+      <td>${badge}</td>
+      <td>${action}</td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML = `
+    ${dash}
+    <div class="card fadein">
+      <div class="hd"><span class="ic">${matched?'🧮':'📋'}</span>
+        <div><h3>${head}</h3><small>${sub}</small></div>
+      </div>
+      <div class="bd">
+        <div class="tablewrap">
+          <table>
+            <thead><tr>
+              <th>Item</th><th>Description</th><th>Supplier / Hub</th>
+              <th>Recv / Ord</th><th>Line value</th><th>Status</th><th>Action</th>
+            </tr></thead>
+            <tbody id="tbody">${rows}</tbody>
+          </table>
+        </div>
+        ${matched?`<div class="legend">
+          <span><span class="dot" style="width:8px;height:8px;background:#22c55e"></span> Confirmed = received in full → ready to ship</span>
+          <span><span class="dot" style="width:8px;height:8px;background:#f59e0b"></span> Partial = some units missing</span>
+          <span><span class="dot" style="width:8px;height:8px;background:#64748b"></span> Not received = pending arrival / needs verify</span>
+        </div>`:''}
+      </div>
+    </div>`;
+
+  if(matched) wireFilters();
+}
+
+function wireFilters(){
+  const chips=[...document.querySelectorAll('#filters .chip')];
+  chips.forEach(c=>c.addEventListener('click',()=>{
+    chips.forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    const f=c.dataset.f;
+    [...document.querySelectorAll('#tbody tr')].forEach(tr=>{
+      tr.style.display = (f==='all'||tr.dataset.status===f)?'':'none';
+    });
+  }));
+  // fulfill buttons feedback
+  document.querySelectorAll('.act-btn.go').forEach(b=>{
+    if(b.textContent==='Fulfill') b.addEventListener('click',()=>{b.textContent='✓ Queued';b.disabled=true;});
+  });
+}
+</script>
+</body>
+</html>
