@@ -228,19 +228,60 @@ PAGE_HTML = r"""
   .sup-card .prog{height:6px;border-radius:6px;background:var(--line);margin-top:10px;overflow:hidden}
   .sup-card .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brand),var(--green));transition:width .8s ease}
   .sup-card .st{font-size:10.5px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+
+  /* ---------- tour text (class-based so it can scale responsively) ---------- */
+  .tk-kicker{font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:12px}
+  .tk-title{font-size:33px;font-weight:800;letter-spacing:-.4px;line-height:1.12;margin-bottom:26px;max-width:760px}
+  .tk-stagebox{min-height:236px;display:grid;place-items:center;width:100%}
+  .tk-caption{font-size:15.5px;color:#aeb9c8;margin-top:26px;max-width:620px;line-height:1.6}
+  .tk-outro-h{font-size:38px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+  .tk-outro-p{font-size:15px;color:#8b97a8;margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto}
+  .tk-actions{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap}
+
+  /* ---------- tablet (<= 820px) ---------- */
+  @media(max-width:820px){
+    .tourcard{height:auto !important;min-height:520px}
+    .tk-title{font-size:27px;margin-bottom:18px}
+    .tk-outro-h{font-size:30px}
+    .grid{grid-template-columns:1fr}
+  }
+  /* ---------- phone (<= 560px) ---------- */
+  @media(max-width:560px){
+    #tourView{padding:10px !important}
+    .tourcard{height:auto !important;min-height:0;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+    .tourtop{padding:14px 16px !important;gap:9px !important}
+    .tourstage{padding:6px 14px !important}
+    .tourctrls{padding:12px 12px 16px !important;gap:10px !important}
+    .tk-kicker{font-size:10px;letter-spacing:2px;margin-bottom:8px}
+    .tk-title{font-size:20px;margin-bottom:14px;line-height:1.18}
+    .tk-stagebox{min-height:150px}
+    .tk-caption{font-size:12.5px;margin-top:16px;line-height:1.5}
+    .tk-outro-h{font-size:22px}
+    .tk-outro-p{font-size:12.5px;margin-top:8px}
+    #ph-counter{display:none}
+    .wrap{padding:16px 12px 60px}
+    header.top{padding:16px 16px}
+    .htext h1{font-size:18px}
+    .stepper{grid-template-columns:1fr 1fr;gap:8px}
+    .reco{flex-wrap:wrap}
+    .reco .act{margin-left:0;width:100%}
+    .reco .act .act-btn{flex:1}
+    .kpi .val{font-size:24px}
+    .btnrow{flex-wrap:wrap}
+  }
 </style>
 </head>
 <body>
 
 <!-- ============================== TOUR VIEW ============================== -->
-<div id="tourView" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#0d1117">
-  <div style="position:relative;width:100%;max-width:1100px;height:620px;overflow:hidden;border-radius:16px;border:1px solid #283042;background:radial-gradient(1100px 700px at 78% -10%,#15233f 0%,#0d1117 55%);color:#e6edf3;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.45)">
+<div id="tourView" style="display:flex;align-items:center;justify-content:center;padding:22px;background:#0d1117">
+  <div class="tourcard" style="position:relative;width:100%;max-width:1100px;height:620px;overflow:hidden;border-radius:16px;border:1px solid #283042;background:radial-gradient(1100px 700px at 78% -10%,#15233f 0%,#0d1117 55%);color:#e6edf3;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.45)">
 
     <div style="position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.28),transparent 70%);filter:blur(14px);pointer-events:none"></div>
     <div style="position:absolute;left:-100px;bottom:-140px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 70%);filter:blur(12px);pointer-events:none"></div>
 
     <!-- top bar -->
-    <div style="display:flex;align-items:center;gap:13px;padding:20px 28px;z-index:2">
+    <div class="tourtop" style="display:flex;align-items:center;gap:13px;padding:20px 28px;z-index:2;flex-wrap:wrap">
       <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:18px;box-shadow:0 6px 16px rgba(59,130,246,.45)">📦</div>
       <div style="line-height:1.25">
         <div style="font-size:14px;font-weight:700;letter-spacing:.2px">David Lau Logistic Matching System</div>
@@ -251,12 +292,12 @@ PAGE_HTML = r"""
     </div>
 
     <!-- stage -->
-    <div style="flex:1;display:grid;place-items:center;padding:8px 28px;z-index:1;min-height:0">
+    <div class="tourstage" style="flex:1;display:grid;place-items:center;padding:8px 28px;z-index:1;min-height:0">
       <div id="t-stage" style="width:100%;max-width:940px;text-align:center"></div>
     </div>
 
     <!-- bottom controls -->
-    <div style="display:flex;align-items:center;gap:18px;padding:18px 28px 24px;z-index:2">
+    <div class="tourctrls" style="display:flex;align-items:center;gap:18px;padding:18px 28px 24px;z-index:2">
       <div id="ph-counter" style="font-size:12px;color:#8b97a8;font-variant-numeric:tabular-nums;min-width:84px">01 / 06</div>
       <div style="flex:1;display:flex;gap:7px;max-width:560px;margin:0 auto">
         <div data-seek="0" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-0" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
@@ -733,10 +774,10 @@ function wireFilters(){
   var outroHTML =
     '<div style="display:flex;flex-direction:column;align-items:center;gap:22px">'
     + '<div style="width:84px;height:84px;border-radius:22px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:42px;box-shadow:0 12px 34px rgba(59,130,246,.5)">🛒</div>'
-    + '<div><div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:10px">YOU\'RE READY</div>'
-    + '<h2 style="font-size:38px;font-weight:800;letter-spacing:-.5px;line-height:1.1">See it work, live.</h2>'
-    + '<p style="font-size:15px;color:#8b97a8;margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto">Run the full order-to-fulfillment flow yourself — upload the order, then watch the engine match and decide.</p></div>'
-    + '<div style="display:flex;gap:12px;align-items:center;margin-top:6px">'
+    + '<div><div class="tk-kicker" style="margin-bottom:10px">YOU\'RE READY</div>'
+    + '<h2 class="tk-outro-h">See it work, live.</h2>'
+    + '<p class="tk-outro-p">Run the full order-to-fulfillment flow yourself — upload the order, then watch the engine match and decide.</p></div>'
+    + '<div class="tk-actions">'
     + '<button onclick="showDemo()" style="border:0;cursor:pointer;font-weight:800;font-size:15.5px;color:#fff;background:linear-gradient(135deg,#3b82f6,#6366f1);padding:15px 30px;border-radius:14px;box-shadow:0 10px 26px rgba(59,130,246,.45);display:flex;align-items:center;gap:10px">Enter the Demo <span style="font-size:17px">→</span></button>'
     + '<button id="t-replay2" style="appearance:none;border:1px solid #283042;background:transparent;color:#e6edf3;font-weight:700;font-size:14px;padding:15px 20px;border-radius:14px;cursor:pointer">&#8634; Replay tour</button>'
     + '</div></div>';
@@ -767,10 +808,10 @@ function wireFilters(){
     }
     var m = meta[idx];
     stageEl.innerHTML = '<div class="stage-anim" style="display:flex;flex-direction:column;align-items:center">'
-      + '<div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:12px">'+m.kicker+'</div>'
-      + '<h2 style="font-size:33px;font-weight:800;letter-spacing:-.4px;line-height:1.12;margin-bottom:26px;max-width:760px">'+m.title+'</h2>'
-      + '<div style="min-height:236px;display:grid;place-items:center;width:100%">'+stages[idx]+'</div>'
-      + '<p style="font-size:15.5px;color:#aeb9c8;margin-top:26px;max-width:620px;line-height:1.6">'+m.caption+'</p>'
+      + '<div class="tk-kicker">'+m.kicker+'</div>'
+      + '<h2 class="tk-title">'+m.title+'</h2>'
+      + '<div class="tk-stagebox">'+stages[idx]+'</div>'
+      + '<p class="tk-caption">'+m.caption+'</p>'
       + '</div>';
   }
   function updateChrome(){
@@ -815,17 +856,35 @@ function wireFilters(){
 
 <!-- ============================== NAVIGATION ============================== -->
 <script>
+  // Resize the embedding iframe to fit the currently visible view so the page
+  // is never clipped and has no dead space — works on phone, tablet & desktop.
+  function fitFrame(){
+    try{
+      if(!window.frameElement) return;
+      var tour=document.getElementById('tourView');
+      var demo=document.getElementById('demoView');
+      var active=(tour.style.display==='none')?demo:tour;
+      var h=Math.max(active.scrollHeight, active.offsetHeight,
+                     document.body.scrollHeight);
+      window.frameElement.style.height=(h+6)+'px';
+    }catch(e){}
+  }
   function showDemo(){
     document.getElementById('tourView').style.display='none';
     document.getElementById('demoView').style.display='block';
+    fitFrame();
     try{ window.scrollTo(0,0); }catch(e){}
   }
   function showTour(){
     document.getElementById('demoView').style.display='none';
     document.getElementById('tourView').style.display='flex';
     if(window.replayTour) window.replayTour();
+    fitFrame();
     try{ window.scrollTo(0,0); }catch(e){}
   }
+  window.addEventListener('resize', fitFrame);
+  setInterval(fitFrame, 400);
+  setTimeout(fitFrame, 120);
 </script>
 
 </body>
@@ -834,4 +893,4 @@ function wireFilters(){
 
 # A tall frame so the demo (after matching) renders fully; the tour centres
 # itself within the viewport, and scrolling=True covers any overflow.
-components.html(PAGE_HTML, height=1500, scrolling=True)
+components.html(PAGE_HTML, height=760, scrolling=True)
