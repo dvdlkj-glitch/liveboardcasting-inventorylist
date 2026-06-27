@@ -1,9 +1,11 @@
 """
 Ulive Smart Fulfillment — Streamlit deployment
 ================================================
-A single-file Streamlit app that embeds:
-  1. An animated 6-step intro "tour" (rebuilt from the .dc.html cover in vanilla JS)
-  2. The interactive "AI Order Matching" demo (embedded verbatim)
+A single, self-contained Streamlit app. The animated intro "tour" plays first;
+when it finishes the user clicks **Enter the Demo** (or **Skip intro** at any time)
+to flow straight into the interactive "AI Order Matching" demo — exactly like the
+original design. Both screens live in ONE embedded page, so navigation happens
+client-side with no sidebar.
 
 Run locally:
     pip install -r requirements.txt
@@ -11,8 +13,7 @@ Run locally:
 
 Deploy on Streamlit Community Cloud:
     Push this file + requirements.txt to a GitHub repo, then create a new app
-    pointing at streamlit_app.py. No other files are required — everything is
-    inlined below, so the app is fully self-contained.
+    pointing at streamlit_app.py.
 """
 
 import streamlit as st
@@ -22,254 +23,38 @@ st.set_page_config(
     page_title="Ulive Smart Fulfillment",
     page_icon="📦",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# Strip Streamlit's default padding so the embedded dark UI fills the page.
+# Strip Streamlit chrome so the embedded dark UI fills the page.
 st.markdown(
     """
     <style>
-      .block-container {padding: 0.5rem 1rem 1rem 1rem; max-width: 100%;}
-      header[data-testid="stHeader"] {background: transparent;}
+      .block-container {padding: 0 !important; max-width: 100%;}
+      header[data-testid="stHeader"] {display: none;}
       #MainMenu, footer {visibility: hidden;}
-      body {background: #0d1117;}
+      section[data-testid="stSidebar"] {display: none;}
+      .stApp {background: #0d1117;}
+      div[data-testid="stDecoration"] {display: none;}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ----------------------------------------------------------------------------
-# 1) INTRO TOUR  — vanilla-JS rebuild of "Ulive Tour Cover.dc.html"
-#    (the original relied on a proprietary DCLogic runtime; this version runs
-#     anywhere with no dependencies, preserving the exact look & animation)
-# ----------------------------------------------------------------------------
-TOUR_HTML = r"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif}
-  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-  @keyframes glowPulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.85;transform:scale(1.12)}}
-  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-  .stage-anim{animation:rise .5s ease both}
-</style>
-</head>
-<body>
-<div style="position:relative;height:620px;overflow:hidden;background:radial-gradient(1100px 700px at 78% -10%,#15233f 0%,#0d1117 55%);color:#e6edf3;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;border-radius:14px">
-
-  <div style="position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.28),transparent 70%);filter:blur(14px);pointer-events:none"></div>
-  <div style="position:absolute;left:-100px;bottom:-140px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 70%);filter:blur(12px);pointer-events:none"></div>
-
-  <!-- top bar -->
-  <div style="display:flex;align-items:center;gap:13px;padding:20px 28px;z-index:2">
-    <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:18px;box-shadow:0 6px 16px rgba(59,130,246,.45)">📦</div>
-    <div style="line-height:1.25">
-      <div id="t-brand" style="font-size:14px;font-weight:700;letter-spacing:.2px">David Lau Logistic Matching System</div>
-      <div style="font-size:11px;color:#8b97a8">Guided tour · AI order-to-fulfillment</div>
-    </div>
-    <span style="margin-left:10px;font-size:10px;letter-spacing:1.5px;color:#8b97a8;border:1px solid #283042;padding:4px 9px;border-radius:999px">INTRO</span>
-  </div>
-
-  <!-- stage -->
-  <div style="flex:1;display:grid;place-items:center;padding:8px 28px;z-index:1;min-height:0">
-    <div id="t-stage" style="width:100%;max-width:940px;text-align:center"></div>
-  </div>
-
-  <!-- bottom controls -->
-  <div style="display:flex;align-items:center;gap:18px;padding:18px 28px 24px;z-index:2">
-    <div id="ph-counter" style="font-size:12px;color:#8b97a8;font-variant-numeric:tabular-nums;min-width:84px">01 / 06</div>
-    <div style="flex:1;display:flex;gap:7px;max-width:560px;margin:0 auto">
-      <div data-seek="0" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-0" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-      <div data-seek="1" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-1" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-      <div data-seek="2" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-2" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-      <div data-seek="3" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-3" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-      <div data-seek="4" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-4" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-      <div data-seek="5" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-5" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
-    </div>
-    <div style="display:flex;gap:9px;min-width:84px;justify-content:flex-end">
-      <button id="ph-play" style="width:36px;height:36px;border-radius:10px;border:1px solid #283042;background:rgba(255,255,255,.03);color:#e6edf3;font-size:13px;cursor:pointer">&#10074;&#10074;</button>
-      <button id="ph-replay" style="width:36px;height:36px;border-radius:10px;border:1px solid #283042;background:rgba(255,255,255,.03);color:#e6edf3;font-size:14px;cursor:pointer">&#8634;</button>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  var timed = [5000, 6000, 6800, 7000, 6000, 6500];
-  var starts = []; var c = 0;
-  for (var i=0;i<timed.length;i++){ starts.push(c); c += timed[i]; }
-  var total = c;
-  var outroHold = 800;
-
-  var meta = [
-    { kicker:"DAVID LAU · LOGISTIC MATCHING SYSTEM", title:"Smart fulfillment, fully automated",
-      caption:"An AI engine that turns raw customer orders into ship-ready decisions — from intake all the way to dispatch." },
-    { kicker:"THE PROBLEM", title:"The manual bottleneck",
-      caption:"Orders were reconciled by hand against 50+ printed lists at the K.K. and K.L. hubs — slow, error-prone, and blind to what could actually ship." },
-    { kicker:"STEP 1 · INTAKE & EXTRACTION", title:"From a Messenger chat to clean data",
-      caption:"Customer order screenshots are OCR-extracted into structured line items, with each line auto-assigned to its supplier and receiving hub." },
-    { kicker:"STEP 2 · INBOUND RECEIVING", title:"Scanned in as it arrives",
-      caption:"Suppliers ship to the hubs and every box is barcode-scanned, reconciling physical stock against the digital order in real time." },
-    { kicker:"STEP 3 · SMART MATCHING", title:"Received stock, meet ordered lines",
-      caption:"The engine matches what physically arrived against every ordered line — flagging each as confirmed, partial, or still pending." },
-    { kicker:"STEP 4 · OPTIMIZED OUTPUT", title:"Fulfill or hold — decided instantly",
-      caption:"A live fill-rate dashboard plus a clear Fulfill / Hold recommendation for the whole order, with one click to dispatch or notify." }
-  ];
-
-  var stages = [
-    // 0 - intro
-    '<div style="position:relative;width:200px;height:200px;display:grid;place-items:center;margin:0 auto">'
-    + '<div style="position:absolute;inset:0;border-radius:50%;border:1px solid rgba(99,102,241,.4);animation:glowPulse 2.6s ease-in-out infinite"></div>'
-    + '<div style="position:absolute;inset:30px;border-radius:50%;border:1px solid rgba(59,130,246,.45);animation:glowPulse 2.6s .5s ease-in-out infinite"></div>'
-    + '<div style="width:108px;height:108px;border-radius:30px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:56px;box-shadow:0 16px 40px rgba(59,130,246,.5);animation:floaty 3.4s ease-in-out infinite">📦</div>'
-    + '</div>',
-    // 1 - problem
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:18px">'
-    + '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">'
-    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">📋 50+ printed lists</div>'
-    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">✍️ Hand-checked at the hub</div>'
-    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">⏱️ Hours of delay</div>'
-    + '</div>'
-    + '<div style="display:flex;align-items:center;gap:11px;background:linear-gradient(120deg,rgba(239,68,68,.14),transparent);border:1px solid rgba(239,68,68,.42);border-radius:13px;padding:14px 20px">'
-    + '<span style="font-size:22px">⚠️</span><span style="font-size:14px;font-weight:600;color:#fca5a5">No real-time view of what can actually ship</span>'
-    + '</div></div>',
-    // 2 - intake
-    '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center">'
-    + '<div style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-radius:16px 16px 16px 4px;padding:14px 17px;font-size:13px;font-weight:600;text-align:left;max-width:170px;box-shadow:0 8px 20px rgba(59,130,246,.3)">Amy · Messenger<div style="font-size:11px;opacity:.85;margin-top:4px;font-weight:500">📷 2 invoice screenshots</div></div>'
-    + '<span style="font-size:20px;color:#5d6b7e">&#10141;</span>'
-    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 16px;font-size:13px"><div style="font-size:22px;margin-bottom:5px">📄</div><b>OCR Extract</b><div style="font-size:11px;color:#8b97a8;margin-top:3px">Inv 19023 · 19697</div></div>'
-    + '<span style="font-size:20px;color:#5d6b7e">&#10141;</span>'
-    + '<div style="display:flex;flex-direction:column;gap:7px;text-align:left">'
-    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">E10C</span> Handheld Fan</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">H16</span> Lingzhi Soup Pack</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">R40</span> Shower Gel 800g</div>'
-    + '</div></div>',
-    // 3 - receiving
-    '<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">'
-    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🔌 Supplier A <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.K.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:100%;background:#22c55e"></div></div><div style="font-size:10.5px;color:#86efac;margin-top:7px">✅ all units received</div></div>'
-    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🍲 Supplier B <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.L.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:55%;background:#f59e0b"></div></div><div style="font-size:10.5px;color:#fcd34d;margin-top:7px">⚠ partial — units short</div></div>'
-    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🧴 Supplier C <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.K.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:30%;background:#64748b"></div></div><div style="font-size:10.5px;color:#8b97a8;margin-top:7px">⏳ awaiting arrival</div></div>'
-    + '</div>',
-    // 4 - matching
-    '<div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px;margin:0 auto">'
-    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">E10C</span><span style="font-size:13px;flex:1;text-align:left">Handheld Fan</span><span style="font-size:11px;font-weight:700;color:#86efac;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);padding:4px 11px;border-radius:999px">● Confirmed</span></div>'
-    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">H20</span><span style="font-size:13px;flex:1;text-align:left">Five-Finger Peach Soup</span><span style="font-size:11px;font-weight:700;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);padding:4px 11px;border-radius:999px">● Partial</span></div>'
-    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">R35</span><span style="font-size:13px;flex:1;text-align:left">Fabric Softener ×5</span><span style="font-size:11px;font-weight:700;color:#86efac;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);padding:4px 11px;border-radius:999px">● Confirmed</span></div>'
-    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">R42</span><span style="font-size:13px;flex:1;text-align:left">Sandalwood Shower Gel</span><span style="font-size:11px;font-weight:700;color:#cbd5e1;background:rgba(100,116,139,.14);border:1px solid rgba(100,116,139,.4);padding:4px 11px;border-radius:999px">● To confirm</span></div>'
-    + '</div>',
-    // 5 - output
-    '<div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:640px;margin:0 auto">'
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:11px">'
-    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">✅ Fulfillable</div><div style="font-size:27px;font-weight:800;color:#22c55e;margin-top:5px">10</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#22c55e"></div></div>'
-    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">⚠ Partial</div><div style="font-size:27px;font-weight:800;color:#f59e0b;margin-top:5px">1</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#f59e0b"></div></div>'
-    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">⏳ Not in</div><div style="font-size:27px;font-weight:800;color:#93a3b8;margin-top:5px">4</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#64748b"></div></div>'
-    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">📊 Fill rate</div><div style="font-size:27px;font-weight:800;color:#7fb4ff;margin-top:5px">67%</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#3b82f6"></div></div>'
-    + '</div>'
-    + '<div style="display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,rgba(245,158,11,.14),transparent);border:1px solid rgba(245,158,11,.45);border-radius:14px;padding:15px 18px;text-align:left"><span style="font-size:28px">⏸️</span><div><div style="font-size:15px;font-weight:700">Recommendation: HOLD / QUEUE</div><div style="font-size:12px;color:#8b97a8;margin-top:2px">Ship-complete policy → hold, notify customer, auto-release when stock arrives.</div></div></div>'
-    + '</div>'
-  ];
-
-  var outroHTML =
-    '<div style="display:flex;flex-direction:column;align-items:center;gap:22px">'
-    + '<div style="width:84px;height:84px;border-radius:22px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:42px;box-shadow:0 12px 34px rgba(59,130,246,.5)">🛒</div>'
-    + '<div><div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:10px">YOU\'RE READY</div>'
-    + '<h2 style="font-size:38px;font-weight:800;letter-spacing:-.5px;line-height:1.1">See it work, live.</h2>'
-    + '<p style="font-size:15px;color:#8b97a8;margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto">Run the full order-to-fulfillment flow yourself — switch to <b style="color:#e6edf3">Live Demo</b> in the sidebar, upload the order, then watch the engine match and decide.</p></div>'
-    + '<div style="display:flex;gap:12px;align-items:center;margin-top:6px">'
-    + '<button id="t-replay2" style="appearance:none;border:1px solid #283042;background:transparent;color:#e6edf3;font-weight:700;font-size:14px;padding:15px 20px;border-radius:14px;cursor:pointer">&#8634; Replay tour</button>'
-    + '</div></div>';
-
-  var stageEl = document.getElementById('t-stage');
-  var counterEl = document.getElementById('ph-counter');
-  var playBtn = document.getElementById('ph-play');
-
-  var base = 0, anchor = performance.now(), playing = true, cur = 0, rendered = -1;
-  var speed = 1, loop = false;
-
-  function rawElapsed(){ return playing ? base + (performance.now()-anchor)*speed : base; }
-  function elapsedNow(){ var e = rawElapsed(); if(e<0)e=0; if(e>total+outroHold)e=total+outroHold; return e; }
-  function calcCur(){
-    var e = elapsedNow();
-    if(e>=total) return timed.length;
-    for(var i=0;i<timed.length;i++){ if(e<starts[i]+timed[i]) return i; }
-    return timed.length;
-  }
-  function renderStage(idx){
-    if(idx===rendered) return;
-    rendered = idx;
-    if(idx===timed.length){
-      stageEl.innerHTML = '<div class="stage-anim">'+outroHTML+'</div>';
-      var r2 = document.getElementById('t-replay2');
-      if(r2) r2.onclick = replay;
-      return;
-    }
-    var m = meta[idx];
-    stageEl.innerHTML = '<div class="stage-anim" style="display:flex;flex-direction:column;align-items:center">'
-      + '<div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:12px">'+m.kicker+'</div>'
-      + '<h2 style="font-size:33px;font-weight:800;letter-spacing:-.4px;line-height:1.12;margin-bottom:26px;max-width:760px">'+m.title+'</h2>'
-      + '<div style="min-height:236px;display:grid;place-items:center;width:100%">'+stages[idx]+'</div>'
-      + '<p style="font-size:15.5px;color:#aeb9c8;margin-top:26px;max-width:620px;line-height:1.6">'+m.caption+'</p>'
-      + '</div>';
-  }
-  function updateChrome(){
-    var e = elapsedNow();
-    for(var i=0;i<timed.length;i++){
-      var f = document.getElementById('ph-fill-'+i);
-      if(f){ var frac = Math.max(0,Math.min(1,(e-starts[i])/timed[i])); f.style.width = (frac*100)+'%'; }
-    }
-    var k = calcCur();
-    counterEl.textContent = e>=total ? 'Tour complete' : ('0'+(k+1)+' / 06');
-    playBtn.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
-  }
-  function tick(){
-    var e = rawElapsed();
-    if(loop && e>=total){ base=0; anchor=performance.now(); }
-    else if(e>=total+outroHold){ base=total+outroHold; playing=false; }
-    updateChrome();
-    var k = calcCur();
-    if(k!==cur){ cur=k; renderStage(k); }
-  }
-  function seekTo(i){ base = starts[i]+1; anchor=performance.now(); playing=true; cur=i; renderStage(i); updateChrome(); }
-  function togglePlay(){
-    if(playing){ base=elapsedNow(); playing=false; }
-    else { anchor=performance.now(); playing=true; }
-    updateChrome();
-  }
-  function replay(){ base=0; anchor=performance.now(); playing=true; cur=0; renderStage(0); updateChrome(); }
-
-  playBtn.onclick = togglePlay;
-  document.getElementById('ph-replay').onclick = replay;
-  var seekEls = document.querySelectorAll('[data-seek]');
-  for(var s=0;s<seekEls.length;s++){
-    (function(el){ el.onclick = function(){ seekTo(parseInt(el.getAttribute('data-seek'),10)); }; })(seekEls[s]);
-  }
-
-  renderStage(0);
-  updateChrome();
-  setInterval(tick, 50);
-})();
-</script>
-</body>
-</html>
-"""
-
-# ----------------------------------------------------------------------------
-# 2) LIVE DEMO — "Ulive_Smart_Fulfillment_Demo.html" embedded verbatim.
-#    This file is already a self-contained, dependency-free single-page app.
-# ----------------------------------------------------------------------------
-DEMO_HTML = r"""
+# ============================================================================
+# Combined single-page app:  TOUR  →  (Enter Demo / Skip intro)  →  DEMO
+# The intro tour is a vanilla-JS rebuild of "Ulive Tour Cover.dc.html"
+# (the original needed a proprietary DCLogic runtime). The demo below is the
+# "Ulive_Smart_Fulfillment_Demo.html" embedded verbatim.
+# ============================================================================
+PAGE_HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ulive Smart Fulfillment — AI Order Matching Demo</title>
 <style>
+  /* ---------- shared / demo styles ---------- */
   :root{
     --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#283042;
     --ink:#e6edf3; --muted:#8b97a8; --muted2:#5d6b7e;
@@ -289,6 +74,12 @@ DEMO_HTML = r"""
   a{color:var(--brand)}
   .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
 
+  /* ---------- tour-only animations ---------- */
+  @keyframes tourRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes glowPulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.85;transform:scale(1.12)}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  .stage-anim{animation:tourRise .5s ease both}
+
   header.top{
     display:flex;align-items:center;gap:16px;flex-wrap:wrap;
     background:linear-gradient(120deg,#11203b 0%,#161b22 60%);
@@ -301,10 +92,12 @@ DEMO_HTML = r"""
     display:grid;place-items:center;font-size:26px;box-shadow:0 6px 18px rgba(59,130,246,.45)}
   .htext h1{font-size:21px;letter-spacing:.2px}
   .htext p{color:var(--muted);font-size:13px;margin-top:2px}
-  .tag{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;z-index:1}
+  .tag{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;z-index:1;align-items:center}
   .pill{font-size:11.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
     background:rgba(255,255,255,.03);color:var(--muted)}
   .pill b{color:var(--ink)}
+  .pill.link{cursor:pointer;transition:.15s}
+  .pill.link:hover{border-color:var(--brand);color:var(--ink)}
 
   .stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
   .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px;position:relative;
@@ -438,113 +231,161 @@ DEMO_HTML = r"""
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header class="top">
-    <div class="logo">🛒</div>
-    <div class="htext">
-      <h1>Ulive Smart Fulfillment</h1>
-      <p>AI Order-to-Receiving Matching Engine · Live Demo</p>
-    </div>
-    <div class="tag">
-      <span class="pill">Hubs: <b>K.K.</b> · <b>K.L.</b></span>
-      <span class="pill">Suppliers: <b>A · B · C</b></span>
-      <span class="pill">Mode: <b>AI Automated</b></span>
-    </div>
-  </header>
+<!-- ============================== TOUR VIEW ============================== -->
+<div id="tourView" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#0d1117">
+  <div style="position:relative;width:100%;max-width:1100px;height:620px;overflow:hidden;border-radius:16px;border:1px solid #283042;background:radial-gradient(1100px 700px at 78% -10%,#15233f 0%,#0d1117 55%);color:#e6edf3;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.45)">
 
-  <div class="stepper" id="stepper">
-    <div class="step" data-step="1">
-      <div class="num"><span>1</span></div>
-      <h4>Order Intake & Extraction</h4>
-      <p>Customer order from Messenger → structured line items</p>
+    <div style="position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.28),transparent 70%);filter:blur(14px);pointer-events:none"></div>
+    <div style="position:absolute;left:-100px;bottom:-140px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 70%);filter:blur(12px);pointer-events:none"></div>
+
+    <!-- top bar -->
+    <div style="display:flex;align-items:center;gap:13px;padding:20px 28px;z-index:2">
+      <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:18px;box-shadow:0 6px 16px rgba(59,130,246,.45)">📦</div>
+      <div style="line-height:1.25">
+        <div style="font-size:14px;font-weight:700;letter-spacing:.2px">David Lau Logistic Matching System</div>
+        <div style="font-size:11px;color:#8b97a8">Guided tour · AI order-to-fulfillment</div>
+      </div>
+      <span style="margin-left:10px;font-size:10px;letter-spacing:1.5px;color:#8b97a8;border:1px solid #283042;padding:4px 9px;border-radius:999px">INTRO</span>
+      <button onclick="showDemo()" style="margin-left:auto;border:1px solid #283042;background:rgba(255,255,255,.03);color:#e6edf3;font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:999px;cursor:pointer">Skip intro →</button>
     </div>
-    <div class="step" data-step="2">
-      <div class="num"><span>2</span></div>
-      <h4>Inbound Receiving & Scan</h4>
-      <p>Suppliers ship to hubs · barcode scan vs digital records</p>
+
+    <!-- stage -->
+    <div style="flex:1;display:grid;place-items:center;padding:8px 28px;z-index:1;min-height:0">
+      <div id="t-stage" style="width:100%;max-width:940px;text-align:center"></div>
     </div>
-    <div class="step" data-step="3">
-      <div class="num"><span>3</span></div>
-      <h4>Smart Inventory Matching</h4>
-      <p>Match received goods to each ordered line</p>
-    </div>
-    <div class="step" data-step="4">
-      <div class="num"><span>4</span></div>
-      <h4>Optimized Output</h4>
-      <p>Fulfillment status + Fulfill / Hold recommendation</p>
+
+    <!-- bottom controls -->
+    <div style="display:flex;align-items:center;gap:18px;padding:18px 28px 24px;z-index:2">
+      <div id="ph-counter" style="font-size:12px;color:#8b97a8;font-variant-numeric:tabular-nums;min-width:84px">01 / 06</div>
+      <div style="flex:1;display:flex;gap:7px;max-width:560px;margin:0 auto">
+        <div data-seek="0" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-0" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+        <div data-seek="1" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-1" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+        <div data-seek="2" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-2" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+        <div data-seek="3" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-3" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+        <div data-seek="4" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-4" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+        <div data-seek="5" style="flex:1;height:4px;border-radius:3px;background:#283042;overflow:hidden;cursor:pointer"><div id="ph-fill-5" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:3px;transition:width .12s linear"></div></div>
+      </div>
+      <div style="display:flex;gap:9px;min-width:84px;justify-content:flex-end">
+        <button id="ph-play" style="width:36px;height:36px;border-radius:10px;border:1px solid #283042;background:rgba(255,255,255,.03);color:#e6edf3;font-size:13px;cursor:pointer">&#10074;&#10074;</button>
+        <button id="ph-replay" style="width:36px;height:36px;border-radius:10px;border:1px solid #283042;background:rgba(255,255,255,.03);color:#e6edf3;font-size:14px;cursor:pointer">&#8634;</button>
+      </div>
     </div>
   </div>
+</div>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <div class="hd"><span class="ic">📄</span>
-          <div><h3>Customer Order Source</h3><small>Uploaded Excel — Amy Yee</small></div>
+<!-- ============================== DEMO VIEW ============================== -->
+<div id="demoView" style="display:none">
+  <div class="wrap">
+
+    <header class="top">
+      <div class="logo">🛒</div>
+      <div class="htext">
+        <h1>Ulive Smart Fulfillment</h1>
+        <p>AI Order-to-Receiving Matching Engine · Live Demo</p>
+      </div>
+      <div class="tag">
+        <span class="pill">Hubs: <b>K.K.</b> · <b>K.L.</b></span>
+        <span class="pill">Suppliers: <b>A · B · C</b></span>
+        <span class="pill">Mode: <b>AI Automated</b></span>
+        <span class="pill link" onclick="showTour()">↺ <b>Replay intro</b></span>
+      </div>
+    </header>
+
+    <div class="stepper" id="stepper">
+      <div class="step" data-step="1">
+        <div class="num"><span>1</span></div>
+        <h4>Order Intake & Extraction</h4>
+        <p>Customer order from Messenger → structured line items</p>
+      </div>
+      <div class="step" data-step="2">
+        <div class="num"><span>2</span></div>
+        <h4>Inbound Receiving & Scan</h4>
+        <p>Suppliers ship to hubs · barcode scan vs digital records</p>
+      </div>
+      <div class="step" data-step="3">
+        <div class="num"><span>3</span></div>
+        <h4>Smart Inventory Matching</h4>
+        <p>Match received goods to each ordered line</p>
+      </div>
+      <div class="step" data-step="4">
+        <div class="num"><span>4</span></div>
+        <h4>Optimized Output</h4>
+        <p>Fulfillment status + Fulfill / Hold recommendation</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="hd"><span class="ic">📄</span>
+            <div><h3>Customer Order Source</h3><small>Uploaded Excel — Amy Yee</small></div>
+          </div>
+          <div class="bd">
+            <div class="cust">
+              <div class="row"><span>Customer</span><b>AMY YEE</b></div>
+              <div class="row"><span>FB / Channel</span><b>Messenger</b></div>
+              <div class="row"><span>Phone</span><b>+60 98808133</b></div>
+              <div class="row"><span>Country</span><b>🇲🇾 Malaysia</b></div>
+              <div class="row"><span>Invoices</span><b>2 (19023 · 19697)</b></div>
+              <div class="row"><span>Order lines</span><b id="lineCount">—</b></div>
+              <div class="row"><span>Order value</span><b id="orderValue">—</b></div>
+            </div>
+            <div class="src-note">
+              📌 <b>How the demo maps to the real flow:</b> Amy's two invoice screenshots are
+              OCR-extracted into structured lines. Each line is auto-assigned to its supplier &amp;
+              receiving hub, then matched against what has physically arrived &amp; been scanned.
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="uploadBtn">📥 Simulate Excel Upload</button>
+            </div>
+            <div class="btnrow">
+              <button class="btn ghost sm" id="runBtn" disabled style="flex:1">▶ Run AI Matching</button>
+              <button class="btn ghost sm" id="resetBtn" style="width:auto">↺ Reset</button>
+            </div>
+          </div>
         </div>
-        <div class="bd">
-          <div class="cust">
-            <div class="row"><span>Customer</span><b>AMY YEE</b></div>
-            <div class="row"><span>FB / Channel</span><b>Messenger</b></div>
-            <div class="row"><span>Phone</span><b>+60 98808133</b></div>
-            <div class="row"><span>Country</span><b>🇲🇾 Malaysia</b></div>
-            <div class="row"><span>Invoices</span><b>2 (19023 · 19697)</b></div>
-            <div class="row"><span>Order lines</span><b id="lineCount">—</b></div>
-            <div class="row"><span>Order value</span><b id="orderValue">—</b></div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="hd"><span class="ic">🏭</span>
+            <div><h3>Inbound Receiving</h3><small>Live scan progress by supplier</small></div>
           </div>
-          <div class="src-note">
-            📌 <b>How the demo maps to the real flow:</b> Amy's two invoice screenshots are
-            OCR-extracted into structured lines. Each line is auto-assigned to its supplier &amp;
-            receiving hub, then matched against what has physically arrived &amp; been scanned.
-          </div>
-          <div class="btnrow">
-            <button class="btn" id="uploadBtn">📥 Simulate Excel Upload</button>
-          </div>
-          <div class="btnrow">
-            <button class="btn ghost sm" id="runBtn" disabled style="flex:1">▶ Run AI Matching</button>
-            <button class="btn ghost sm" id="resetBtn" style="width:auto">↺ Reset</button>
+          <div class="bd">
+            <div class="scan-grid" id="scanGrid">
+              <div class="empty" style="padding:24px;grid-column:1/-1">
+                <div class="big">📦</div>
+                <p style="font-size:12px">Run matching to see supplier receiving progress.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top:18px">
-        <div class="hd"><span class="ic">🏭</span>
-          <div><h3>Inbound Receiving</h3><small>Live scan progress by supplier</small></div>
-        </div>
-        <div class="bd">
-          <div class="scan-grid" id="scanGrid">
-            <div class="empty" style="padding:24px;grid-column:1/-1">
-              <div class="big">📦</div>
-              <p style="font-size:12px">Run matching to see supplier receiving progress.</p>
+      <div>
+        <div class="console" id="console"></div>
+
+        <div id="resultArea">
+          <div class="card">
+            <div class="empty">
+              <div class="big">🤖</div>
+              <h3>Awaiting order &amp; matching run</h3>
+              <p>Click <b>Simulate Excel Upload</b> to load Amy Yee's order, then
+                 <b>Run AI Matching</b> to watch the engine reconcile every line against
+                 received supplier stock and decide what can ship.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div>
-      <div class="console" id="console"></div>
-
-      <div id="resultArea">
-        <div class="card">
-          <div class="empty">
-            <div class="big">🤖</div>
-            <h3>Awaiting order &amp; matching run</h3>
-            <p>Click <b>Simulate Excel Upload</b> to load Amy Yee's order, then
-               <b>Run AI Matching</b> to watch the engine reconcile every line against
-               received supplier stock and decide what can ship.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <footer>
+      <div>Ulive Purchase-Order → Automation · Demo build · single-file HTML (no server, no dependencies — upload anywhere)</div>
+      <div>Replaces the manual bottleneck: 50+ printed lists &amp; hand-checking at K.K./K.L. → real-time AI matching.</div>
+    </footer>
   </div>
-
-  <footer>
-    <div>Ulive Purchase-Order → Automation · Demo build · single-file HTML (no server, no dependencies — upload anywhere)</div>
-    <div>Replaces the manual bottleneck: 50+ printed lists &amp; hand-checking at K.K./K.L. → real-time AI matching.</div>
-  </footer>
 </div>
 
+<!-- ============================== DEMO SCRIPT ============================== -->
 <script>
 const SUPPLIERS = {
   A: {name:"Supplier A · Electronics", hub:"K.K.", emoji:"🔌"},
@@ -623,7 +464,16 @@ $('#uploadBtn').addEventListener('click', ()=>{
   renderResults(false);
 });
 
-$('#resetBtn').addEventListener('click', ()=> location.reload());
+$('#resetBtn').addEventListener('click', ()=>{
+  loaded=false; activeFilter="all";
+  steps.forEach(s=>s.classList.remove('active','done'));
+  consoleEl.classList.remove('show'); consoleEl.innerHTML="";
+  $('#lineCount').textContent="—"; $('#orderValue').textContent="—";
+  $('#runBtn').disabled=true; $('#runBtn').textContent="▶ Run AI Matching";
+  $('#uploadBtn').disabled=false; $('#uploadBtn').textContent="📥 Simulate Excel Upload";
+  $('#scanGrid').innerHTML='<div class="empty" style="padding:24px;grid-column:1/-1"><div class="big">📦</div><p style="font-size:12px">Run matching to see supplier receiving progress.</p></div>';
+  $('#resultArea').innerHTML='<div class="card"><div class="empty"><div class="big">🤖</div><h3>Awaiting order &amp; matching run</h3><p>Click <b>Simulate Excel Upload</b> to load Amy Yee\'s order, then <b>Run AI Matching</b> to watch the engine reconcile every line against received supplier stock and decide what can ship.</p></div></div>';
+});
 
 $('#runBtn').addEventListener('click', run);
 async function run(){
@@ -808,29 +658,180 @@ function wireFilters(){
   });
 }
 </script>
+
+<!-- ============================== TOUR SCRIPT ============================== -->
+<script>
+(function(){
+  var timed = [5000, 6000, 6800, 7000, 6000, 6500];
+  var starts = []; var c = 0;
+  for (var i=0;i<timed.length;i++){ starts.push(c); c += timed[i]; }
+  var total = c;
+  var outroHold = 800;
+
+  var meta = [
+    { kicker:"DAVID LAU · LOGISTIC MATCHING SYSTEM", title:"Smart fulfillment, fully automated",
+      caption:"An AI engine that turns raw customer orders into ship-ready decisions — from intake all the way to dispatch." },
+    { kicker:"THE PROBLEM", title:"The manual bottleneck",
+      caption:"Orders were reconciled by hand against 50+ printed lists at the K.K. and K.L. hubs — slow, error-prone, and blind to what could actually ship." },
+    { kicker:"STEP 1 · INTAKE & EXTRACTION", title:"From a Messenger chat to clean data",
+      caption:"Customer order screenshots are OCR-extracted into structured line items, with each line auto-assigned to its supplier and receiving hub." },
+    { kicker:"STEP 2 · INBOUND RECEIVING", title:"Scanned in as it arrives",
+      caption:"Suppliers ship to the hubs and every box is barcode-scanned, reconciling physical stock against the digital order in real time." },
+    { kicker:"STEP 3 · SMART MATCHING", title:"Received stock, meet ordered lines",
+      caption:"The engine matches what physically arrived against every ordered line — flagging each as confirmed, partial, or still pending." },
+    { kicker:"STEP 4 · OPTIMIZED OUTPUT", title:"Fulfill or hold — decided instantly",
+      caption:"A live fill-rate dashboard plus a clear Fulfill / Hold recommendation for the whole order, with one click to dispatch or notify." }
+  ];
+
+  var stages = [
+    '<div style="position:relative;width:200px;height:200px;display:grid;place-items:center;margin:0 auto">'
+    + '<div style="position:absolute;inset:0;border-radius:50%;border:1px solid rgba(99,102,241,.4);animation:glowPulse 2.6s ease-in-out infinite"></div>'
+    + '<div style="position:absolute;inset:30px;border-radius:50%;border:1px solid rgba(59,130,246,.45);animation:glowPulse 2.6s .5s ease-in-out infinite"></div>'
+    + '<div style="width:108px;height:108px;border-radius:30px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:56px;box-shadow:0 16px 40px rgba(59,130,246,.5);animation:floaty 3.4s ease-in-out infinite">📦</div>'
+    + '</div>',
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:18px">'
+    + '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">'
+    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">📋 50+ printed lists</div>'
+    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">✍️ Hand-checked at the hub</div>'
+    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 18px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px">⏱️ Hours of delay</div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:11px;background:linear-gradient(120deg,rgba(239,68,68,.14),transparent);border:1px solid rgba(239,68,68,.42);border-radius:13px;padding:14px 20px">'
+    + '<span style="font-size:22px">⚠️</span><span style="font-size:14px;font-weight:600;color:#fca5a5">No real-time view of what can actually ship</span>'
+    + '</div></div>',
+    '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center">'
+    + '<div style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-radius:16px 16px 16px 4px;padding:14px 17px;font-size:13px;font-weight:600;text-align:left;max-width:170px;box-shadow:0 8px 20px rgba(59,130,246,.3)">Amy · Messenger<div style="font-size:11px;opacity:.85;margin-top:4px;font-weight:500">📷 2 invoice screenshots</div></div>'
+    + '<span style="font-size:20px;color:#5d6b7e">&#10141;</span>'
+    + '<div style="background:#1c2330;border:1px solid #283042;border-radius:13px;padding:14px 16px;font-size:13px"><div style="font-size:22px;margin-bottom:5px">📄</div><b>OCR Extract</b><div style="font-size:11px;color:#8b97a8;margin-top:3px">Inv 19023 · 19697</div></div>'
+    + '<span style="font-size:20px;color:#5d6b7e">&#10141;</span>'
+    + '<div style="display:flex;flex-direction:column;gap:7px;text-align:left">'
+    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">E10C</span> Handheld Fan</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">H16</span> Lingzhi Soup Pack</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;background:#161b22;border:1px solid #283042;border-radius:9px;padding:8px 11px;font-size:11.5px"><span style="font-family:Consolas,monospace;color:#9fb4cf;background:#1c2330;padding:1px 6px;border-radius:5px">R40</span> Shower Gel 800g</div>'
+    + '</div></div>',
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">'
+    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🔌 Supplier A <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.K.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:100%;background:#22c55e"></div></div><div style="font-size:10.5px;color:#86efac;margin-top:7px">✅ all units received</div></div>'
+    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🍲 Supplier B <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.L.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:55%;background:#f59e0b"></div></div><div style="font-size:10.5px;color:#fcd34d;margin-top:7px">⚠ partial — units short</div></div>'
+    + '<div style="width:200px;background:#1c2330;border:1px solid #283042;border-radius:14px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px">🧴 Supplier C <span style="margin-left:auto;font-size:10px;color:#8b97a8;background:#161b22;border:1px solid #283042;padding:2px 7px;border-radius:6px">K.K.</span></div><div style="height:7px;border-radius:6px;background:#283042;margin-top:12px;overflow:hidden"><div style="height:100%;width:30%;background:#64748b"></div></div><div style="font-size:10.5px;color:#8b97a8;margin-top:7px">⏳ awaiting arrival</div></div>'
+    + '</div>',
+    '<div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px;margin:0 auto">'
+    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">E10C</span><span style="font-size:13px;flex:1;text-align:left">Handheld Fan</span><span style="font-size:11px;font-weight:700;color:#86efac;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);padding:4px 11px;border-radius:999px">● Confirmed</span></div>'
+    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">H20</span><span style="font-size:13px;flex:1;text-align:left">Five-Finger Peach Soup</span><span style="font-size:11px;font-weight:700;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);padding:4px 11px;border-radius:999px">● Partial</span></div>'
+    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">R35</span><span style="font-size:13px;flex:1;text-align:left">Fabric Softener ×5</span><span style="font-size:11px;font-weight:700;color:#86efac;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);padding:4px 11px;border-radius:999px">● Confirmed</span></div>'
+    + '<div style="display:flex;align-items:center;gap:12px;background:#161b22;border:1px solid #283042;border-radius:11px;padding:11px 15px"><span style="font-family:Consolas,monospace;font-size:11.5px;color:#9fb4cf;background:#1c2330;padding:2px 8px;border-radius:6px">R42</span><span style="font-size:13px;flex:1;text-align:left">Sandalwood Shower Gel</span><span style="font-size:11px;font-weight:700;color:#cbd5e1;background:rgba(100,116,139,.14);border:1px solid rgba(100,116,139,.4);padding:4px 11px;border-radius:999px">● To confirm</span></div>'
+    + '</div>',
+    '<div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:640px;margin:0 auto">'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:11px">'
+    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">✅ Fulfillable</div><div style="font-size:27px;font-weight:800;color:#22c55e;margin-top:5px">10</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#22c55e"></div></div>'
+    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">⚠ Partial</div><div style="font-size:27px;font-weight:800;color:#f59e0b;margin-top:5px">1</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#f59e0b"></div></div>'
+    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">⏳ Not in</div><div style="font-size:27px;font-weight:800;color:#93a3b8;margin-top:5px">4</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#64748b"></div></div>'
+    + '<div style="background:#161b22;border:1px solid #283042;border-radius:13px;padding:13px;text-align:left;position:relative;overflow:hidden"><div style="font-size:10.5px;color:#8b97a8">📊 Fill rate</div><div style="font-size:27px;font-weight:800;color:#7fb4ff;margin-top:5px">67%</div><div style="position:absolute;left:0;bottom:0;height:3px;width:100%;background:#3b82f6"></div></div>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,rgba(245,158,11,.14),transparent);border:1px solid rgba(245,158,11,.45);border-radius:14px;padding:15px 18px;text-align:left"><span style="font-size:28px">⏸️</span><div><div style="font-size:15px;font-weight:700">Recommendation: HOLD / QUEUE</div><div style="font-size:12px;color:#8b97a8;margin-top:2px">Ship-complete policy → hold, notify customer, auto-release when stock arrives.</div></div></div>'
+    + '</div>'
+  ];
+
+  var outroHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:22px">'
+    + '<div style="width:84px;height:84px;border-radius:22px;background:linear-gradient(135deg,#3b82f6,#6366f1);display:grid;place-items:center;font-size:42px;box-shadow:0 12px 34px rgba(59,130,246,.5)">🛒</div>'
+    + '<div><div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:10px">YOU\'RE READY</div>'
+    + '<h2 style="font-size:38px;font-weight:800;letter-spacing:-.5px;line-height:1.1">See it work, live.</h2>'
+    + '<p style="font-size:15px;color:#8b97a8;margin-top:12px;max-width:480px;margin-left:auto;margin-right:auto">Run the full order-to-fulfillment flow yourself — upload the order, then watch the engine match and decide.</p></div>'
+    + '<div style="display:flex;gap:12px;align-items:center;margin-top:6px">'
+    + '<button onclick="showDemo()" style="border:0;cursor:pointer;font-weight:800;font-size:15.5px;color:#fff;background:linear-gradient(135deg,#3b82f6,#6366f1);padding:15px 30px;border-radius:14px;box-shadow:0 10px 26px rgba(59,130,246,.45);display:flex;align-items:center;gap:10px">Enter the Demo <span style="font-size:17px">→</span></button>'
+    + '<button id="t-replay2" style="appearance:none;border:1px solid #283042;background:transparent;color:#e6edf3;font-weight:700;font-size:14px;padding:15px 20px;border-radius:14px;cursor:pointer">&#8634; Replay tour</button>'
+    + '</div></div>';
+
+  var stageEl = document.getElementById('t-stage');
+  var counterEl = document.getElementById('ph-counter');
+  var playBtn = document.getElementById('ph-play');
+
+  var base = 0, anchor = performance.now(), playing = true, cur = 0, rendered = -1;
+  var speed = 1, loop = false;
+
+  function rawElapsed(){ return playing ? base + (performance.now()-anchor)*speed : base; }
+  function elapsedNow(){ var e = rawElapsed(); if(e<0)e=0; if(e>total+outroHold)e=total+outroHold; return e; }
+  function calcCur(){
+    var e = elapsedNow();
+    if(e>=total) return timed.length;
+    for(var i=0;i<timed.length;i++){ if(e<starts[i]+timed[i]) return i; }
+    return timed.length;
+  }
+  function renderStage(idx){
+    if(idx===rendered) return;
+    rendered = idx;
+    if(idx===timed.length){
+      stageEl.innerHTML = '<div class="stage-anim">'+outroHTML+'</div>';
+      var r2 = document.getElementById('t-replay2');
+      if(r2) r2.onclick = replay;
+      return;
+    }
+    var m = meta[idx];
+    stageEl.innerHTML = '<div class="stage-anim" style="display:flex;flex-direction:column;align-items:center">'
+      + '<div style="font-size:11px;letter-spacing:2.5px;color:#7fb4ff;font-weight:700;margin-bottom:12px">'+m.kicker+'</div>'
+      + '<h2 style="font-size:33px;font-weight:800;letter-spacing:-.4px;line-height:1.12;margin-bottom:26px;max-width:760px">'+m.title+'</h2>'
+      + '<div style="min-height:236px;display:grid;place-items:center;width:100%">'+stages[idx]+'</div>'
+      + '<p style="font-size:15.5px;color:#aeb9c8;margin-top:26px;max-width:620px;line-height:1.6">'+m.caption+'</p>'
+      + '</div>';
+  }
+  function updateChrome(){
+    var e = elapsedNow();
+    for(var i=0;i<timed.length;i++){
+      var f = document.getElementById('ph-fill-'+i);
+      if(f){ var frac = Math.max(0,Math.min(1,(e-starts[i])/timed[i])); f.style.width = (frac*100)+'%'; }
+    }
+    var k = calcCur();
+    counterEl.textContent = e>=total ? 'Tour complete' : ('0'+(k+1)+' / 06');
+    playBtn.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+  }
+  function tick(){
+    var e = rawElapsed();
+    if(loop && e>=total){ base=0; anchor=performance.now(); }
+    else if(e>=total+outroHold){ base=total+outroHold; playing=false; }
+    updateChrome();
+    var k = calcCur();
+    if(k!==cur){ cur=k; renderStage(k); }
+  }
+  function seekTo(i){ base = starts[i]+1; anchor=performance.now(); playing=true; cur=i; renderStage(i); updateChrome(); }
+  function togglePlay(){
+    if(playing){ base=elapsedNow(); playing=false; }
+    else { anchor=performance.now(); playing=true; }
+    updateChrome();
+  }
+  function replay(){ base=0; anchor=performance.now(); playing=true; cur=0; renderStage(0); updateChrome(); }
+  window.replayTour = replay;
+
+  playBtn.onclick = togglePlay;
+  document.getElementById('ph-replay').onclick = replay;
+  var seekEls = document.querySelectorAll('[data-seek]');
+  for(var s=0;s<seekEls.length;s++){
+    (function(el){ el.onclick = function(){ seekTo(parseInt(el.getAttribute('data-seek'),10)); }; })(seekEls[s]);
+  }
+
+  renderStage(0);
+  updateChrome();
+  setInterval(tick, 50);
+})();
+</script>
+
+<!-- ============================== NAVIGATION ============================== -->
+<script>
+  function showDemo(){
+    document.getElementById('tourView').style.display='none';
+    document.getElementById('demoView').style.display='block';
+    try{ window.scrollTo(0,0); }catch(e){}
+  }
+  function showTour(){
+    document.getElementById('demoView').style.display='none';
+    document.getElementById('tourView').style.display='flex';
+    if(window.replayTour) window.replayTour();
+    try{ window.scrollTo(0,0); }catch(e){}
+  }
+</script>
+
 </body>
 </html>
 """
 
-# ----------------------------------------------------------------------------
-# 3) Streamlit shell — sidebar navigation between the two views
-# ----------------------------------------------------------------------------
-with st.sidebar:
-    st.markdown("### 📦 Ulive Smart Fulfillment")
-    st.caption("AI order-to-fulfillment · David Lau Logistic Matching System")
-    view = st.radio(
-        "View",
-        ["🎬 Intro Tour", "🛒 Live Demo"],
-        index=0,
-        label_visibility="collapsed",
-    )
-    st.divider()
-    st.caption(
-        "Tip: Watch the **Intro Tour** first for the story, then switch to the "
-        "**Live Demo** to run the AI matching yourself."
-    )
-
-if view == "🎬 Intro Tour":
-    components.html(TOUR_HTML, height=640, scrolling=False)
-else:
-    components.html(DEMO_HTML, height=1400, scrolling=True)
+# A tall frame so the demo (after matching) renders fully; the tour centres
+# itself within the viewport, and scrolling=True covers any overflow.
+components.html(PAGE_HTML, height=1500, scrolling=True)
